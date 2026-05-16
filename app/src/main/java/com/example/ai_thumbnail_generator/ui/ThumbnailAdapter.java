@@ -11,16 +11,18 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.ai_thumbnail_generator.R;
-import com.example.ai_thumbnail_generator.network.ServerService;
+import com.example.ai_thumbnail_generator.network.Models;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.ViewHolder> {
 
-    private List<ServerService.ThumbnailResponse> items = new ArrayList<>();
+    private List<Models.ThumbnailData> items = new ArrayList<>();
 
-    public void setItems(List<ServerService.ThumbnailResponse> newItems) {
+    private final java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault());
+
+    public void setItems(List<Models.ThumbnailData> newItems) {
         this.items = newItems;
         notifyDataSetChanged();
     }
@@ -34,10 +36,17 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        ServerService.ThumbnailResponse item = items.get(position);
-        holder.tvTitle.setText(item.title);
+        Models.ThumbnailData item = items.get(position);
+        holder.tvTitle.setText(item.original_title);
         holder.tvRatio.setText(item.ratio_type);
-        holder.tvDate.setText(item.created_at); // Supabase returns ISO string usually
+        
+        try {
+            // ISO format usually looks like: 2026-05-16T13:47:46.000Z
+            String cleanDate = item.created_at.replace("T", " ").split("\\.")[0];
+            holder.tvDate.setText(cleanDate);
+        } catch (Exception e) {
+            holder.tvDate.setText(item.created_at);
+        }
 
         Glide.with(holder.itemView.getContext())
                 .load(item.image_url)

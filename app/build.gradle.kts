@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.livedata)
     implementation(libs.socket.io)
+    implementation(libs.google.auth)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

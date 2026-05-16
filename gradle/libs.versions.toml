@@ -12,6 +12,7 @@ glide = "4.16.0"
 room = "2.6.1"
 lifecycle = "2.8.7"
 socket-io = "2.1.0"
+googleAuth = "21.2.0"
 
 
 [libraries]
@@ -30,6 +31,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "lifecycle" }
 lifecycle-livedata = { group = "androidx.lifecycle", name = "lifecycle-livedata", version.ref = "lifecycle" }
 socket-io = { group = "io.socket", name = "socket.io-client", version.ref = "socket-io" }
+google-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googleAuth" }
 
 
 [plugins]

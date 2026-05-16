@@ -10,7 +10,7 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.example.ai_thumbnail_generator.models.Models;
+import com.example.ai_thumbnail_generator.network.Models;
 import com.example.ai_thumbnail_generator.network.ServerService;
 import com.google.gson.Gson;
 
@@ -71,12 +71,36 @@ public class MainViewModel extends AndroidViewModel {
 
             mSocket.on("thumbnail_ready", args -> {
                 try {
-                    JSONObject data = (JSONObject) args[0];
+                    org.json.JSONObject data = (org.json.JSONObject) args[0];
                     String imageUrl = data.getString("imageUrl");
-                    mainHandler.post(() -> {
-                        lastGeneratedUri.setValue(imageUrl);
-                        statusMessage.setValue("Generation complete!");
-                        fetchHistory();
+                    org.json.JSONObject strategy = data.getJSONObject("strategy");
+                    String hookText = strategy.getString("hookText");
+                    String colorPalette = strategy.getString("colorPalette");
+                    String ratio = data.getString("ratio");
+
+                    executor.execute(() -> {
+                        try {
+                            android.graphics.Bitmap bg = com.bumptech.glide.Glide.with(getApplication())
+                                    .asBitmap()
+                                    .load(imageUrl)
+                                    .submit()
+                                    .get();
+
+                            android.graphics.Bitmap finalBitmap = com.example.ai_thumbnail_generator.utils.ThumbnailRenderer.draw(
+                                    getApplication(), bg, hookText, colorPalette, ratio);
+
+                            mainHandler.post(() -> {
+                                lastGeneratedUri.setValue(imageUrl); // Keep original URL for reference
+                                statusMessage.setValue("Generation complete with text!");
+                                fetchHistory();
+                            });
+                        } catch (Exception e) {
+                            Log.e("Render", "Failed to render text", e);
+                            mainHandler.post(() -> {
+                                lastGeneratedUri.setValue(imageUrl);
+                                fetchHistory();
+                            });
+                        }
                     });
                 } catch (Exception e) {
                     Log.e("Socket", "Error parsing result", e);
@@ -88,16 +112,18 @@ public class MainViewModel extends AndroidViewModel {
         }
     }
 
-    public void generateThumbnail(String title, String ratio) {
-        statusMessage.setValue("Planning strategy...");
+    public void generateThumbnail(String title, String ratio, String type) {
+        statusMessage.setValue("Processing request...");
         String socketId = mSocket.id();
-        String userId = "00000000-0000-0000-0000-000000000000";
+        
+        com.example.ai_thumbnail_generator.utils.SessionManager sessionManager = new com.example.ai_thumbnail_generator.utils.SessionManager(getApplication());
+        String userId = sessionManager.getUserId();
 
-        Models.GenerateRequest request = new Models.GenerateRequest(title, ratio, socketId, userId);
+        Models.GenerateRequest request = new Models.GenerateRequest(title, ratio, socketId, userId, type);
         
         executor.execute(() -> {
             try {
-                serverService.generateThumbnail(request).execute();
+                serverService.startGeneration(request).execute();
             } catch (Exception e) {
                 mainHandler.post(() -> statusMessage.setValue("Error: " + e.getMessage()));
             }

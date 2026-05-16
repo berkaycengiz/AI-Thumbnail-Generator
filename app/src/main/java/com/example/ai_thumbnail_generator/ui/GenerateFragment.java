@@ -4,60 +4,45 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.RadioGroup;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-
-import com.bumptech.glide.Glide;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
 import com.example.ai_thumbnail_generator.R;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 
 public class GenerateFragment extends Fragment {
-
-    private MainViewModel viewModel;
-    private EditText etVideoTitle;
-    private RadioGroup rgRatio;
-    private ImageView ivPreview;
-    private View previewCard;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_generate, container, false);
+        return inflater.inflate(R.layout.fragment_generate, container, false);
+    }
 
-        etVideoTitle = view.findViewById(R.id.etVideoTitle);
-        rgRatio = view.findViewById(R.id.rgRatio);
-        ivPreview = view.findViewById(R.id.ivPreview);
-        previewCard = view.findViewById(R.id.previewCard);
-        Button btnGenerate = view.findViewById(R.id.btnGenerate);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-        viewModel = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
+        TabLayout tabLayout = view.findViewById(R.id.generate_tabs);
+        ViewPager2 viewPager = view.findViewById(R.id.generate_viewpager);
 
-        btnGenerate.setOnClickListener(v -> {
-            String title = etVideoTitle.getText().toString().trim();
-            if (title.isEmpty()) return;
+        viewPager.setAdapter(new FragmentStateAdapter(this) {
+            @NonNull
+            @Override
+            public Fragment createFragment(int position) {
+                return position == 0 ? new ThumbnailGenerateFragment() : new ImageGenerateFragment();
+            }
 
-            int checkedId = rgRatio.getCheckedRadioButtonId();
-            String ratio = "16:9";
-            if (checkedId == R.id.rb11) ratio = "1:1";
-            else if (checkedId == R.id.rb916) ratio = "9:16";
-
-            // NOT: Google Login entegrasyonu tamamlandığında 'userId' dinamik olacak
-            viewModel.generateThumbnail(title, ratio);
-        });
-
-        viewModel.getLastGeneratedUri().observe(getViewLifecycleOwner(), uri -> {
-            if (uri != null) {
-                previewCard.setVisibility(View.VISIBLE);
-                Glide.with(this).load(uri).into(ivPreview);
+            @Override
+            public int getItemCount() {
+                return 2;
             }
         });
 
-        return view;
+        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            tab.setText(position == 0 ? "Thumbnail" : "Art Studio");
+        }).attach();
     }
 }

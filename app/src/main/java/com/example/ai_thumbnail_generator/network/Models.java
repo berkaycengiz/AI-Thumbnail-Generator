@@ -16,6 +16,27 @@ public class Models {
         }
     }
 
+    public static class GenerateRequest {
+        public String title;
+        public String ratio;
+        public String socketId;
+        public String userId;
+        public String type;
+
+        public GenerateRequest(String title, String ratio, String socketId, String userId, String type) {
+            this.title = title;
+            this.ratio = ratio;
+            this.socketId = socketId;
+            this.userId = userId;
+            this.type = type;
+        }
+    }
+
+    public static class GenerateResponse {
+        public boolean success;
+        public String generationId;
+    }
+
     public static class Message {
         public String role;
         public String content;
@@ -43,6 +64,18 @@ public class Models {
         public String hookText;
         public String colorPalette;
         public String visualPrompt;
+    }
+
+    public static class ThumbnailData {
+        public int id;
+        public String user_id;
+        public String original_title;
+        public String hook_text;
+        public String color_palette;
+        public String image_url;
+        public String ratio_type;
+        public String created_at;
+        public boolean is_public;
     }
 
     // --- Leonardo Models ---

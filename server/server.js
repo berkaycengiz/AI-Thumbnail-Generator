@@ -34,44 +34,65 @@ app.get('/api/history', async (req, res) => {
 });
 
 app.post('/api/generate', async (req, res) => {
-    const { title, ratio, socketId, userId } = req.body;
-    
+    const { title, ratio, socketId, userId, type } = req.body;
+
     if (!title || !ratio || !socketId || !userId) {
-        return res.status(400).json({ error: 'Missing required fields: title, ratio, socketId, userId' });
+        return res.status(400).json({ error: 'Missing required fields' });
     }
 
     try {
-        const orResponse = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-            model: "meta-llama/llama-3-8b-instruct:free",
-            messages: [{
-                role: "user",
-                content: `Act as a social media expert. Create a thumbnail strategy for a video titled: '${title}'. Return a JSON with: styleType, hookText, colorPalette (hex), visualPrompt.`
-            }],
-            response_format: { type: "json_object" }
-        }, {
-            headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_KEY}` }
-        });
+        let visualPrompt = title;
+        let strategy = { styleType: 'Art', hookText: '', colorPalette: '' };
 
-        const strategy = JSON.parse(orResponse.data.choices[0].message.content);
-        
+        if (type !== 'art') {
+            const orResponse = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+                model: "openrouter/auto",
+                messages: [{
+                    role: "user",
+                    content: `Act as a social media expert. Create a thumbnail strategy for a video titled: '${title}'. Return a JSON with: styleType, hookText, colorPalette (hex), visualPrompt.`
+                }],
+                response_format: { type: "json_object" }
+            }, {
+                headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_KEY}` }
+            });
+
+            strategy = JSON.parse(orResponse.data.choices[0].message.content);
+            visualPrompt = strategy.visualPrompt;
+        }
+
         let w = 1280, h = 720;
         if (ratio === '1:1') { w = 1024; h = 1024; }
         else if (ratio === '9:16') { w = 768; h = 1344; }
 
-        const leoResponse = await axios.post('https://cloud.leonardo.ai/api/rest/v1/generations', {
-            prompt: strategy.visualPrompt,
-            modelId: "6bef9f1b-29cb-40c7-b9df-cd99d9ff2034",
-            width: w,
-            height: h,
-            num_images: 1,
-            webhookUrl: `${process.env.WEBHOOK_URL}/api/webhook/leonardo`
+        const leoResponse = await axios.post('https://cloud.leonardo.ai/api/rest/v2/generations', {
+            model: "gpt-image-2",
+            public: false,
+            parameters: {
+                prompt: visualPrompt,
+                width: 1024,
+                height: 1024,
+                quality: "LOW",
+                prompt_enhance: "OFF"
+            }
         }, {
-            headers: { 'Authorization': `Bearer ${process.env.LEONARDO_KEY}` }
+            headers: {
+                'Authorization': `Bearer ${process.env.LEONARDO_KEY}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
         });
 
-        const genId = leoResponse.data.sdGenerationJob.generationId;
+        console.log('Leonardo Full Response:', JSON.stringify(leoResponse.data, null, 2));
+
+        // ID'yi yakalamak için loglardaki gerçek yolu da ekliyoruz
+        const genId = leoResponse.data.generate?.generationId ||
+            leoResponse.data.id ||
+            (leoResponse.data.sdGenerationJob && leoResponse.data.sdGenerationJob.generationId);
+
+        console.log('Generation started, ID:', genId);
+
         activeJobs.set(genId, { socketId, strategy, title, ratio, userId });
-        
+
         io.to(socketId).emit('status_update', { message: 'AI is painting (Waiting for webhook)...' });
 
         res.json({ success: true, generationId: genId });
@@ -83,37 +104,49 @@ app.post('/api/generate', async (req, res) => {
 });
 
 app.post('/api/webhook/leonardo', async (req, res) => {
+    console.log('--- WEBHOOK RECEIVED ---');
     const payload = req.body;
-    const genId = payload.id || payload.generationId;
-    const status = payload.status;
 
-    if (status === 'COMPLETE' && activeJobs.has(genId)) {
-        const job = activeJobs.get(genId);
-        const imageUrl = payload.generated_images?.[0]?.url;
+    // Webhook logundaki yapıya (data.object) göre okuyoruz
+    const genData = payload.data?.object || payload.data || payload;
+    const genId = payload.id || genData.id || genData.generationId;
+    const status = genData.status;
 
-        if (imageUrl) {
-            const { error } = await supabase
-                .from('thumbnails')
-                .insert([{
-                    user_id: job.userId,
-                    original_title: job.title,
-                    hook_text: job.strategy.hookText,
-                    color_palette: job.strategy.colorPalette,
-                    image_url: imageUrl,
-                    ratio_type: job.ratio,
-                    is_public: false
-                }]);
+    console.log(`Checking job for ID: ${genId}, Status: ${status}`);
 
-            if (error) console.error('Supabase Insert Error:', error.message);
+    const job = activeJobs.get(genId);
+    if (job) {
+        console.log(`Match found for job! Status is: ${status}`);
+        if (status === 'COMPLETE') {
+            const imageUrl = genData.generated_images[0].url;
+            console.log('Image URL found:', imageUrl);
 
-            io.to(job.socketId).emit('thumbnail_ready', {
-                imageUrl,
-                strategy: job.strategy,
-                title: job.title,
-                ratio: job.ratio
-            });
+            const { error } = await supabase.from('thumbnails').insert([{
+                user_id: job.userId,
+                original_title: job.title,
+                hook_text: job.strategy.hookText,
+                color_palette: job.strategy.colorPalette,
+                image_url: imageUrl,
+                ratio_type: job.ratio,
+                is_public: false
+            }]);
+
+            if (error) {
+                console.error('SUPABASE INSERT ERROR:', error.message);
+            } else {
+                console.log('Successfully saved to Supabase!');
+                io.to(job.socketId).emit('thumbnail_ready', {
+                    imageUrl,
+                    strategy: job.strategy,
+                    title: job.title,
+                    ratio: job.ratio
+                });
+            }
+
             activeJobs.delete(genId);
         }
+    } else {
+        console.warn(`No active job found for ID: ${genId}. (Maybe server restarted?)`);
     }
     res.sendStatus(200);
 });

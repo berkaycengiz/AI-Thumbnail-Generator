@@ -16,7 +16,6 @@ public class ThumbnailRenderer {
     public static Bitmap draw(Context ctx, Bitmap aiBg, String text, String hexColor, String ratioType) {
         int targetWidth, targetHeight;
 
-        // Step 1: Define dimensions based on ratio
         switch (ratioType) {
             case "16:9":
                 targetWidth = 1280;
@@ -35,32 +34,27 @@ public class ThumbnailRenderer {
                 targetHeight = 720;
         }
 
-        // Step 2: Scale and Crop Background
         Bitmap scaledBg = scaleCenterCrop(aiBg, targetWidth, targetHeight);
         Bitmap result = scaledBg.copy(Bitmap.Config.ARGB_8888, true);
         Canvas canvas = new Canvas(result);
 
-        // Step 3: Draw Semi-transparent Overlay/Ribbon
         Paint overlayPaint = new Paint();
         try {
             overlayPaint.setColor(Color.parseColor(hexColor));
         } catch (Exception e) {
-            overlayPaint.setColor(Color.BLUE); // Fallback
+            overlayPaint.setColor(Color.BLUE);
         }
-        overlayPaint.setAlpha(180); // Semi-transparent
+        overlayPaint.setAlpha(180);
 
-        // Ribbon position (bottom part)
         int ribbonHeight = targetHeight / 4;
         canvas.drawRect(0, targetHeight - ribbonHeight, targetWidth, targetHeight, overlayPaint);
 
-        // Step 4: Draw Hook Text
         TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextSize(targetWidth / 15f);
         textPaint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         textPaint.setShadowLayer(10, 5, 5, Color.BLACK);
 
-        // Using StaticLayout for text wrapping
         int padding = 40;
         StaticLayout staticLayout = StaticLayout.Builder.obtain(text, 0, text.length(), textPaint, targetWidth - (padding * 2))
                 .setAlignment(Layout.Alignment.ALIGN_CENTER)
