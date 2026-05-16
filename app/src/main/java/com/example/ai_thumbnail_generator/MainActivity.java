@@ -2,95 +2,81 @@ package com.example.ai_thumbnail_generator;
 
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
+import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import com.bumptech.glide.Glide;
-import com.example.ai_thumbnail_generator.ui.MainViewModel;
-import com.example.ai_thumbnail_generator.ui.ThumbnailAdapter;
+import androidx.fragment.app.Fragment;
+import androidx.activity.EdgeToEdge;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.example.ai_thumbnail_generator.ui.DiscoverFragment;
+import com.example.ai_thumbnail_generator.ui.GenerateFragment;
+import com.example.ai_thumbnail_generator.ui.LibraryFragment;
 
 public class MainActivity extends AppCompatActivity {
 
-    private MainViewModel viewModel;
-    private EditText etVideoTitle;
-    private RadioGroup rgRatio;
-    private Button btnGenerate;
-    private ImageView ivPreview;
-    private View progressOverlay;
-    private TextView tvProgressStatus;
-    private ThumbnailAdapter adapter;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize Views
-        etVideoTitle = findViewById(R.id.etVideoTitle);
-        rgRatio = findViewById(R.id.rgRatio);
-        btnGenerate = findViewById(R.id.btnGenerate);
-        ivPreview = findViewById(R.id.ivPreview);
-        progressOverlay = findViewById(R.id.progressOverlay);
-        tvProgressStatus = findViewById(R.id.tvProgressStatus);
-        RecyclerView rvHistory = findViewById(R.id.rvHistory);
-
-        // Setup RecyclerView
-        adapter = new ThumbnailAdapter();
-        rvHistory.setLayoutManager(new LinearLayoutManager(this));
-        rvHistory.setAdapter(adapter);
-
-        // Setup ViewModel
-        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
-
-        // Observe ViewModel State
-        viewModel.getIsLoading().observe(this, loading -> {
-            progressOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
-            btnGenerate.setEnabled(!loading);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_root), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
         });
 
-        viewModel.getStatusMessage().observe(this, status -> {
-            tvProgressStatus.setText(status);
-            if (status.startsWith("Error:")) {
-                Toast.makeText(this, status, Toast.LENGTH_LONG).show();
-            }
-        });
+        View btnGenerate = findViewById(R.id.nav_btn_generate);
+        View btnLibrary = findViewById(R.id.nav_btn_library);
+        View btnDiscover = findViewById(R.id.nav_btn_discover);
 
-        viewModel.getLastGenerated().observe(this, entity -> {
-            if (entity != null) {
-                ivPreview.setVisibility(View.VISIBLE);
-                Glide.with(this).load(entity.localUri).into(ivPreview);
-                Toast.makeText(this, "Thumbnail Generated Successfully!", Toast.LENGTH_SHORT).show();
-            }
-        });
+        ImageView iconGenerate = findViewById(R.id.nav_icon_generate);
+        ImageView iconLibrary = findViewById(R.id.nav_icon_library);
+        ImageView iconDiscover = findViewById(R.id.nav_icon_discover);
 
-        viewModel.getHistory().observe(this, list -> {
-            adapter.setItems(list);
-        });
+        TextView textGenerate = findViewById(R.id.nav_text_generate);
+        TextView textLibrary = findViewById(R.id.nav_text_library);
+        TextView textDiscover = findViewById(R.id.nav_text_discover);
 
-        // Click Listener
+        int colorSelected = androidx.core.content.ContextCompat.getColor(this, R.color.primary_electric);
+        int colorUnselected = androidx.core.content.ContextCompat.getColor(this, R.color.nav_unselected);
+
         btnGenerate.setOnClickListener(v -> {
-            String title = etVideoTitle.getText().toString().trim();
-            if (title.isEmpty()) {
-                etVideoTitle.setError("Please enter a title");
-                return;
-            }
-
-            int checkedId = rgRatio.getCheckedRadioButtonId();
-            String ratio = "16:9";
-            if (checkedId == R.id.rb11) ratio = "1:1";
-            else if (checkedId == R.id.rb916) ratio = "9:16";
-
-            viewModel.generateThumbnail(title, ratio);
+            updateNavUI(iconGenerate, textGenerate, iconLibrary, textLibrary, iconDiscover, textDiscover, colorSelected, colorUnselected, 0);
+            switchFragment(new GenerateFragment());
         });
+
+        btnLibrary.setOnClickListener(v -> {
+            updateNavUI(iconGenerate, textGenerate, iconLibrary, textLibrary, iconDiscover, textDiscover, colorSelected, colorUnselected, 1);
+            switchFragment(new LibraryFragment());
+        });
+
+        btnDiscover.setOnClickListener(v -> {
+            updateNavUI(iconGenerate, textGenerate, iconLibrary, textLibrary, iconDiscover, textDiscover, colorSelected, colorUnselected, 2);
+            switchFragment(new DiscoverFragment());
+        });
+
+        if (savedInstanceState == null) {
+            btnGenerate.performClick();
+        }
+    }
+
+    private void updateNavUI(ImageView iG, TextView tG, ImageView iL, TextView tL, ImageView iD, TextView tD, int sel, int unsel, int index) {
+        iG.setColorFilter(unsel); tG.setTextColor(unsel); tG.setTypeface(null, android.graphics.Typeface.NORMAL);
+        iL.setColorFilter(unsel); tL.setTextColor(unsel); tL.setTypeface(null, android.graphics.Typeface.NORMAL);
+        iD.setColorFilter(unsel); tD.setTextColor(unsel); tD.setTypeface(null, android.graphics.Typeface.NORMAL);
+
+        if (index == 0) { iG.setColorFilter(sel); tG.setTextColor(sel); tG.setTypeface(null, android.graphics.Typeface.BOLD); }
+        else if (index == 1) { iL.setColorFilter(sel); tL.setTextColor(sel); tL.setTypeface(null, android.graphics.Typeface.BOLD); }
+        else if (index == 2) { iD.setColorFilter(sel); tD.setTextColor(sel); tD.setTypeface(null, android.graphics.Typeface.BOLD); }
+    }
+
+    private void switchFragment(Fragment fragment) {
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
     }
 }

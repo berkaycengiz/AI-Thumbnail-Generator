@@ -11,20 +11,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.ai_thumbnail_generator.R;
-import com.example.ai_thumbnail_generator.db.ThumbnailEntity;
+import com.example.ai_thumbnail_generator.network.ServerService;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.ViewHolder> {
 
-    private List<ThumbnailEntity> items = new ArrayList<>();
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault());
+    private List<ServerService.ThumbnailResponse> items = new ArrayList<>();
 
-    public void setItems(List<ThumbnailEntity> newItems) {
+    public void setItems(List<ServerService.ThumbnailResponse> newItems) {
         this.items = newItems;
         notifyDataSetChanged();
     }
@@ -38,13 +34,13 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        ThumbnailEntity item = items.get(position);
-        holder.tvTitle.setText(item.originalTitle);
-        holder.tvRatio.setText(item.ratioType);
-        holder.tvDate.setText(dateFormat.format(new Date(item.date)));
+        ServerService.ThumbnailResponse item = items.get(position);
+        holder.tvTitle.setText(item.title);
+        holder.tvRatio.setText(item.ratio_type);
+        holder.tvDate.setText(item.created_at); // Supabase returns ISO string usually
 
         Glide.with(holder.itemView.getContext())
-                .load(item.localUri)
+                .load(item.image_url)
                 .into(holder.ivThumbnail);
     }
 

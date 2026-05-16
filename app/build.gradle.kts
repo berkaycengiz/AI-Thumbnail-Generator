@@ -48,13 +48,10 @@ dependencies {
     // Image Loading
     implementation(libs.glide)
 
-    // Room Database
-    implementation(libs.room.runtime)
-    annotationProcessor(libs.room.compiler)
-
     // Lifecycle
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.livedata)
+    implementation(libs.socket.io)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
