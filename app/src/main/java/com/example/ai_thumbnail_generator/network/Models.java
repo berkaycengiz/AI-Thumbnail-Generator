@@ -76,6 +76,7 @@ public class Models {
         public String ratio_type;
         public String created_at;
         public boolean is_public;
+        public int likes;
         public Profile profiles;
 
         public static class Profile {

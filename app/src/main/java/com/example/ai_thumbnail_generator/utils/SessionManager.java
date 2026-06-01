@@ -55,4 +55,12 @@ public class SessionManager {
     public void logout() {
         prefs.edit().clear().apply();
     }
+
+    public boolean isLiked(String thumbnailId) {
+        return prefs.getBoolean("liked_" + thumbnailId, false);
+    }
+
+    public void setLiked(String thumbnailId, boolean liked) {
+        prefs.edit().putBoolean("liked_" + thumbnailId, liked).apply();
+    }
 }

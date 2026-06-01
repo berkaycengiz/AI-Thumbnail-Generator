@@ -36,6 +36,8 @@ public class DiscoverFragment extends Fragment {
         rvDiscover.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
         
         adapter = new ThumbnailAdapter();
+        adapter.setShowDeleteButton(false);
+        adapter.setShowShareButton(false);
         rvDiscover.setAdapter(adapter);
 
         SessionManager sessionManager = new SessionManager(requireContext());
@@ -68,6 +70,17 @@ public class DiscoverFragment extends Fragment {
             public void onDownloadClicked(Models.ThumbnailData item) {
                 if (item.image_url != null && !item.image_url.isEmpty()) {
                     com.example.ai_thumbnail_generator.utils.ImageDownloader.download(requireContext(), item.image_url, item.original_title);
+                }
+            }
+
+            @Override
+            public void onLikeClicked(Models.ThumbnailData item, boolean isLiked) {
+                if (viewModel != null) {
+                    if (isLiked) {
+                        viewModel.likeThumbnail(item.id);
+                    } else {
+                        viewModel.unlikeThumbnail(item.id);
+                    }
                 }
             }
         });

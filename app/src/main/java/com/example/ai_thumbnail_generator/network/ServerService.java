@@ -8,6 +8,7 @@ import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 public interface ServerService {
 
@@ -22,4 +23,10 @@ public interface ServerService {
 
     @DELETE("api/thumbnails/{id}")
     Call<ResponseBody> deleteThumbnail(@Path("id") String id);
+
+    @POST("api/thumbnails/{id}/like")
+    Call<ResponseBody> likeThumbnail(@Path("id") String id, @Query("userId") String userId);
+
+    @POST("api/thumbnails/{id}/unlike")
+    Call<ResponseBody> unlikeThumbnail(@Path("id") String id, @Query("userId") String userId);
 }

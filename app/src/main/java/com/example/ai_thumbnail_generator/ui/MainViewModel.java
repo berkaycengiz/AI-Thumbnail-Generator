@@ -211,6 +211,36 @@ public class MainViewModel extends AndroidViewModel {
         });
     }
 
+    public void likeThumbnail(String id) {
+        com.example.ai_thumbnail_generator.utils.SessionManager sessionManager = new com.example.ai_thumbnail_generator.utils.SessionManager(getApplication());
+        String userId = sessionManager.getUserId();
+        executor.execute(() -> {
+            try {
+                retrofit2.Response<okhttp3.ResponseBody> response = serverService.likeThumbnail(id, userId).execute();
+                if (response.isSuccessful()) {
+                    fetchHistory();
+                }
+            } catch (Exception e) {
+                Log.e("API", "Like thumbnail error", e);
+            }
+        });
+    }
+
+    public void unlikeThumbnail(String id) {
+        com.example.ai_thumbnail_generator.utils.SessionManager sessionManager = new com.example.ai_thumbnail_generator.utils.SessionManager(getApplication());
+        String userId = sessionManager.getUserId();
+        executor.execute(() -> {
+            try {
+                retrofit2.Response<okhttp3.ResponseBody> response = serverService.unlikeThumbnail(id, userId).execute();
+                if (response.isSuccessful()) {
+                    fetchHistory();
+                }
+            } catch (Exception e) {
+                Log.e("API", "Unlike thumbnail error", e);
+            }
+        });
+    }
+
     public LiveData<List<Models.ThumbnailData>> getHistory() { return history; }
     public LiveData<String> getStatusMessage() { return statusMessage; }
     public LiveData<String> getLastGeneratedUri() { return lastGeneratedUri; }

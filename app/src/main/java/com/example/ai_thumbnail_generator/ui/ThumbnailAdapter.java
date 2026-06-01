@@ -23,11 +23,14 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
         void onDeleteClicked(Models.ThumbnailData item);
         void onCardClicked(Models.ThumbnailData item);
         void onDownloadClicked(Models.ThumbnailData item);
+        void onLikeClicked(Models.ThumbnailData item, boolean isLiked);
     }
 
     private List<Models.ThumbnailData> items = new ArrayList<>();
     private String currentUserId;
     private OnThumbnailInteractionListener listener;
+    private boolean showDeleteButton = true;
+    private boolean showShareButton = true;
 
     public void setItems(List<Models.ThumbnailData> newItems) {
         this.items = newItems;
@@ -40,6 +43,14 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
 
     public void setOnThumbnailInteractionListener(OnThumbnailInteractionListener listener) {
         this.listener = listener;
+    }
+
+    public void setShowDeleteButton(boolean showDeleteButton) {
+        this.showDeleteButton = showDeleteButton;
+    }
+
+    public void setShowShareButton(boolean showShareButton) {
+        this.showShareButton = showShareButton;
     }
 
     @NonNull
@@ -113,8 +124,8 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
 
         boolean isOwner = currentUserId != null && currentUserId.equals(item.user_id);
         if (isOwner) {
-            holder.btnShare.setVisibility(View.VISIBLE);
-            holder.btnDelete.setVisibility(View.VISIBLE);
+            holder.btnShare.setVisibility(showShareButton ? View.VISIBLE : View.GONE);
+            holder.btnDelete.setVisibility(showDeleteButton ? View.VISIBLE : View.GONE);
 
             if (item.is_public) {
                 holder.btnShare.setColorFilter(android.graphics.Color.parseColor("#10B981")); // Emerald green
@@ -139,6 +150,42 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
         holder.btnDownload.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onDownloadClicked(item);
+            }
+        });
+
+        // Bind Like state and click interactively
+        com.example.ai_thumbnail_generator.utils.SessionManager sessionManager = new com.example.ai_thumbnail_generator.utils.SessionManager(holder.itemView.getContext());
+        boolean isLiked = sessionManager.isLiked(item.id);
+        
+        holder.tvLikeCount.setText(String.valueOf(item.likes));
+        if (isLiked) {
+            holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
+            holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#EF4444")); // Premium Red tint
+        } else {
+            holder.btnLike.setImageResource(R.drawable.ic_heart);
+            holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#94A3B8")); // Premium Slate tint
+        }
+
+        holder.layoutLike.setOnClickListener(v -> {
+            boolean currentLiked = sessionManager.isLiked(item.id);
+            boolean newLiked = !currentLiked;
+            sessionManager.setLiked(item.id, newLiked);
+
+            // Optimistic UI updates
+            int countDiff = newLiked ? 1 : -1;
+            item.likes = Math.max(0, item.likes + countDiff);
+            holder.tvLikeCount.setText(String.valueOf(item.likes));
+
+            if (newLiked) {
+                holder.btnLike.setImageResource(R.drawable.ic_heart_filled);
+                holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#EF4444"));
+            } else {
+                holder.btnLike.setImageResource(R.drawable.ic_heart);
+                holder.btnLike.setColorFilter(android.graphics.Color.parseColor("#94A3B8"));
+            }
+
+            if (listener != null) {
+                listener.onLikeClicked(item, newLiked);
             }
         });
 
@@ -171,6 +218,9 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
         ImageView btnDelete;
         ImageView ivCreatorAvatar;
         TextView tvCreatorName;
+        View layoutLike;
+        ImageView btnLike;
+        TextView tvLikeCount;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -186,6 +236,9 @@ public class ThumbnailAdapter extends RecyclerView.Adapter<ThumbnailAdapter.View
             btnDelete = itemView.findViewById(R.id.btnDelete);
             ivCreatorAvatar = itemView.findViewById(R.id.ivCreatorAvatar);
             tvCreatorName = itemView.findViewById(R.id.tvCreatorName);
+            layoutLike = itemView.findViewById(R.id.layoutLike);
+            btnLike = itemView.findViewById(R.id.btnLike);
+            tvLikeCount = itemView.findViewById(R.id.tvLikeCount);
         }
     }
 

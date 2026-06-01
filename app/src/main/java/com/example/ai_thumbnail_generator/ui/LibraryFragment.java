@@ -69,6 +69,17 @@ public class LibraryFragment extends Fragment {
                     com.example.ai_thumbnail_generator.utils.ImageDownloader.download(requireContext(), item.image_url, item.original_title);
                 }
             }
+
+            @Override
+            public void onLikeClicked(Models.ThumbnailData item, boolean isLiked) {
+                if (viewModel != null) {
+                    if (isLiked) {
+                        viewModel.likeThumbnail(item.id);
+                    } else {
+                        viewModel.unlikeThumbnail(item.id);
+                    }
+                }
+            }
         });
 
         viewModel = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
