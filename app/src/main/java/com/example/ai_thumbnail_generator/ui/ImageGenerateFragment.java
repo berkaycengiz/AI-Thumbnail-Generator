@@ -55,5 +55,13 @@ public class ImageGenerateFragment extends Fragment {
                 viewModel.generateThumbnail(prompt, selectedRatio, "art");
             }
         });
+
+        // Prevent double clicking by disabling create button during processing
+        viewModel.getGenerationStatus().observe(getViewLifecycleOwner(), status -> {
+            boolean isProcessing = (status == MainViewModel.GenStatus.PROCESSING);
+            btnGenerate.setEnabled(!isProcessing);
+            btnGenerate.setAlpha(isProcessing ? 0.6f : 1.0f);
+            btnGenerate.setText(isProcessing ? "CREATING..." : "CREATE ART");
+        });
     }
 }

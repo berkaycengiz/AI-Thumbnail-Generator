@@ -13,6 +13,11 @@ import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ai_thumbnail_generator.R;
+import com.example.ai_thumbnail_generator.network.Models;
+import com.example.ai_thumbnail_generator.utils.SessionManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DiscoverFragment extends Fragment {
 
@@ -24,16 +29,69 @@ public class DiscoverFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_discover, container, false);
 
+        androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefresh = view.findViewById(R.id.swipeRefreshDiscover);
         RecyclerView rvDiscover = view.findViewById(R.id.rvDiscover);
-        // Staggered grid for Pinterest look
+        
+        // Premium Staggered Pinterest Grid with 2 columns
         rvDiscover.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
+        
         adapter = new ThumbnailAdapter();
         rvDiscover.setAdapter(adapter);
 
+        SessionManager sessionManager = new SessionManager(requireContext());
+        adapter.setCurrentUserId(sessionManager.getUserId());
+        
+        // Handle interactions for items owned by current user appearing in community
+        adapter.setOnThumbnailInteractionListener(new ThumbnailAdapter.OnThumbnailInteractionListener() {
+            @Override
+            public void onShareToggled(Models.ThumbnailData item) {
+                if (viewModel != null) {
+                    viewModel.togglePublic(item.id);
+                }
+            }
+
+            @Override
+            public void onDeleteClicked(Models.ThumbnailData item) {
+                if (viewModel != null) {
+                    viewModel.deleteThumbnail(item.id);
+                }
+            }
+
+            @Override
+            public void onCardClicked(Models.ThumbnailData item) {
+                if (item.image_url != null && !item.image_url.isEmpty()) {
+                    com.example.ai_thumbnail_generator.utils.ImageDetailDialog.show(requireContext(), item.image_url);
+                }
+            }
+
+            @Override
+            public void onDownloadClicked(Models.ThumbnailData item) {
+                if (item.image_url != null && !item.image_url.isEmpty()) {
+                    com.example.ai_thumbnail_generator.utils.ImageDownloader.download(requireContext(), item.image_url, item.original_title);
+                }
+            }
+        });
+
         viewModel = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
+        
+        // Swipe to Refresh gesture callback
+        swipeRefresh.setOnRefreshListener(() -> {
+            if (viewModel != null) {
+                viewModel.fetchHistory();
+            }
+        });
+
         viewModel.getHistory().observe(getViewLifecycleOwner(), list -> {
-            // For now, showing all history. Later we can filter by 'is_public'
-            adapter.setItems(list);
+            List<Models.ThumbnailData> publicList = new ArrayList<>();
+            if (list != null) {
+                for (Models.ThumbnailData item : list) {
+                    if (item.is_public) {
+                        publicList.add(item);
+                    }
+                }
+            }
+            adapter.setItems(publicList);
+            swipeRefresh.setRefreshing(false); // Stop loading spinner
         });
 
         return view;

@@ -31,19 +31,31 @@ public class ThumbnailGenerateFragment extends Fragment {
 
         EditText etTopic = view.findViewById(R.id.et_topic);
         MaterialButton btnGenerate = view.findViewById(R.id.btn_generate);
-        TextView tvStatus = view.findViewById(R.id.tv_status);
 
         MaterialButton btn169 = view.findViewById(R.id.btn_ratio_16_9);
         MaterialButton btn11 = view.findViewById(R.id.btn_ratio_1_1);
         MaterialButton btn916 = view.findViewById(R.id.btn_ratio_9_16);
 
         View.OnClickListener ratioListener = v -> {
-            btn169.setStrokeColor(androidx.core.content.ContextCompat.getColorStateList(requireContext(), R.color.text_gray));
-            btn11.setStrokeColor(androidx.core.content.ContextCompat.getColorStateList(requireContext(), R.color.text_gray));
-            btn916.setStrokeColor(androidx.core.content.ContextCompat.getColorStateList(requireContext(), R.color.text_gray));
+            int activeStroke = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.primary_electric);
+            int inactiveStroke = android.graphics.Color.parseColor("#334155");
+            int activeBg = android.graphics.Color.parseColor("#20818CF8"); // 20% Alpha primary_electric
+            int inactiveBg = android.graphics.Color.parseColor("#0F172A");
+            int activeText = android.graphics.Color.parseColor("#FFFFFF");
+            int inactiveText = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_gray);
 
+            // Reset all buttons to inactive styling
+            for (MaterialButton btn : new MaterialButton[]{btn169, btn11, btn916}) {
+                btn.setStrokeColor(android.content.res.ColorStateList.valueOf(inactiveStroke));
+                btn.setBackgroundColor(inactiveBg);
+                btn.setTextColor(inactiveText);
+            }
+
+            // Highlight selected button with glow styling
             MaterialButton b = (MaterialButton) v;
-            b.setStrokeColor(androidx.core.content.ContextCompat.getColorStateList(requireContext(), R.color.primary_electric));
+            b.setStrokeColor(android.content.res.ColorStateList.valueOf(activeStroke));
+            b.setBackgroundColor(activeBg);
+            b.setTextColor(activeText);
             selectedRatio = b.getText().toString();
         };
 
@@ -58,6 +70,14 @@ public class ThumbnailGenerateFragment extends Fragment {
             }
         });
 
-        viewModel.getStatusMessage().observe(getViewLifecycleOwner(), tvStatus::setText);
+
+
+        // Prevent double clicking by disabling generate button during processing
+        viewModel.getGenerationStatus().observe(getViewLifecycleOwner(), status -> {
+            boolean isProcessing = (status == MainViewModel.GenStatus.PROCESSING);
+            btnGenerate.setEnabled(!isProcessing);
+            btnGenerate.setAlpha(isProcessing ? 0.6f : 1.0f);
+            btnGenerate.setText(isProcessing ? "GENERATING..." : "GENERATE NOW");
+        });
     }
 }

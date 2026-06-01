@@ -38,6 +38,10 @@ public class MainViewModel extends AndroidViewModel {
     private final MutableLiveData<String> statusMessage = new MutableLiveData<>("");
     private final MutableLiveData<String> lastGeneratedUri = new MutableLiveData<>(null);
 
+    public enum GenStatus { IDLE, PROCESSING, COMPLETED, FAILED }
+    private final MutableLiveData<GenStatus> generationStatus = new MutableLiveData<>(GenStatus.IDLE);
+    public LiveData<GenStatus> getGenerationStatus() { return generationStatus; }
+
     private Socket mSocket;
 
     public MainViewModel(@NonNull Application application) {
@@ -63,7 +67,10 @@ public class MainViewModel extends AndroidViewModel {
                 try {
                     JSONObject data = (JSONObject) args[0];
                     String message = data.getString("message");
-                    mainHandler.post(() -> statusMessage.setValue(message));
+                    mainHandler.post(() -> {
+                        statusMessage.setValue(message);
+                        generationStatus.setValue(GenStatus.PROCESSING);
+                    });
                 } catch (Exception e) {
                     Log.e("Socket", "Status update error", e);
                 }
@@ -82,7 +89,7 @@ public class MainViewModel extends AndroidViewModel {
                         try {
                             android.graphics.Bitmap bg = com.bumptech.glide.Glide.with(getApplication())
                                     .asBitmap()
-                                    .load(imageUrl)
+                                     .load(imageUrl)
                                     .submit()
                                     .get();
 
@@ -92,18 +99,41 @@ public class MainViewModel extends AndroidViewModel {
                             mainHandler.post(() -> {
                                 lastGeneratedUri.setValue(imageUrl); // Keep original URL for reference
                                 statusMessage.setValue("Generation complete with text!");
+                                generationStatus.setValue(GenStatus.COMPLETED);
                                 fetchHistory();
+                                
+                                // Auto-hide after 3 seconds
+                                mainHandler.postDelayed(() -> {
+                                    if (generationStatus.getValue() == GenStatus.COMPLETED) {
+                                        generationStatus.setValue(GenStatus.IDLE);
+                                    }
+                                }, 3000);
                             });
                         } catch (Exception e) {
                             Log.e("Render", "Failed to render text", e);
                             mainHandler.post(() -> {
                                 lastGeneratedUri.setValue(imageUrl);
+                                generationStatus.setValue(GenStatus.COMPLETED); // Still completed even if text fails
                                 fetchHistory();
+                                
+                                mainHandler.postDelayed(() -> {
+                                    if (generationStatus.getValue() == GenStatus.COMPLETED) {
+                                        generationStatus.setValue(GenStatus.IDLE);
+                                    }
+                                }, 3000);
                             });
                         }
                     });
                 } catch (Exception e) {
                     Log.e("Socket", "Error parsing result", e);
+                    mainHandler.post(() -> {
+                        generationStatus.setValue(GenStatus.FAILED);
+                        mainHandler.postDelayed(() -> {
+                            if (generationStatus.getValue() == GenStatus.FAILED) {
+                                generationStatus.setValue(GenStatus.IDLE);
+                            }
+                        }, 3000);
+                    });
                 }
             });
 
@@ -114,6 +144,8 @@ public class MainViewModel extends AndroidViewModel {
 
     public void generateThumbnail(String title, String ratio, String type) {
         statusMessage.setValue("Processing request...");
+        generationStatus.setValue(GenStatus.PROCESSING);
+        
         String socketId = mSocket.id();
         
         com.example.ai_thumbnail_generator.utils.SessionManager sessionManager = new com.example.ai_thumbnail_generator.utils.SessionManager(getApplication());
@@ -125,7 +157,17 @@ public class MainViewModel extends AndroidViewModel {
             try {
                 serverService.startGeneration(request).execute();
             } catch (Exception e) {
-                mainHandler.post(() -> statusMessage.setValue("Error: " + e.getMessage()));
+                mainHandler.post(() -> {
+                    statusMessage.setValue("Error: " + e.getMessage());
+                    generationStatus.setValue(GenStatus.FAILED);
+                    
+                    // Auto-hide error toast after 3 seconds
+                    mainHandler.postDelayed(() -> {
+                        if (generationStatus.getValue() == GenStatus.FAILED) {
+                            generationStatus.setValue(GenStatus.IDLE);
+                        }
+                    }, 3000);
+                });
             }
         });
     }
@@ -139,6 +181,32 @@ public class MainViewModel extends AndroidViewModel {
                 }
             } catch (Exception e) {
                 Log.e("API", "History fetch error", e);
+            }
+        });
+    }
+
+    public void togglePublic(String id) {
+        executor.execute(() -> {
+            try {
+                retrofit2.Response<okhttp3.ResponseBody> response = serverService.togglePublic(id).execute();
+                if (response.isSuccessful()) {
+                    fetchHistory();
+                }
+            } catch (Exception e) {
+                Log.e("API", "Toggle public error", e);
+            }
+        });
+    }
+
+    public void deleteThumbnail(String id) {
+        executor.execute(() -> {
+            try {
+                retrofit2.Response<okhttp3.ResponseBody> response = serverService.deleteThumbnail(id).execute();
+                if (response.isSuccessful()) {
+                    fetchHistory();
+                }
+            } catch (Exception e) {
+                Log.e("API", "Delete thumbnail error", e);
             }
         });
     }

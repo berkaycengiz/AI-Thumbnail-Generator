@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_KEY);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -26,11 +26,51 @@ io.on('connection', (socket) => {
 app.get('/api/history', async (req, res) => {
     const { data, error } = await supabase
         .from('thumbnails')
-        .select('*')
+        .select('*, profiles(display_name, avatar_url)')
         .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
+});
+
+app.post('/api/thumbnails/:id/toggle-public', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { data: fetchRes, error: fetchErr } = await supabase
+            .from('thumbnails')
+            .select('is_public')
+            .eq('id', id)
+            .single();
+            
+        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+        
+        const newStatus = !fetchRes.is_public;
+        const { error: updateErr } = await supabase
+            .from('thumbnails')
+            .update({ is_public: newStatus })
+            .eq('id', id);
+            
+        if (updateErr) return res.status(500).json({ error: updateErr.message });
+        
+        res.json({ success: true, is_public: newStatus });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/thumbnails/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { error } = await supabase
+            .from('thumbnails')
+            .delete()
+            .eq('id', id);
+            
+        if (error) return res.status(500).json({ error: error.message });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/api/generate', async (req, res) => {
@@ -71,6 +111,7 @@ app.post('/api/generate', async (req, res) => {
                 prompt: visualPrompt,
                 width: 1024,
                 height: 1024,
+                num_images: 1,
                 quality: "LOW",
                 prompt_enhance: "OFF"
             }
@@ -97,7 +138,8 @@ app.post('/api/generate', async (req, res) => {
 
         res.json({ success: true, generationId: genId });
 
-    } catch (error) {
+    } 
+    catch (error) {
         console.error('Server Error:', error.response?.data || error.message);
         res.status(500).json({ error: 'Failed to start generation' });
     }

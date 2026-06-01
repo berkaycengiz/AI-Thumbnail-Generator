@@ -67,7 +67,7 @@ public class Models {
     }
 
     public static class ThumbnailData {
-        public int id;
+        public String id;
         public String user_id;
         public String original_title;
         public String hook_text;
@@ -76,6 +76,12 @@ public class Models {
         public String ratio_type;
         public String created_at;
         public boolean is_public;
+        public Profile profiles;
+
+        public static class Profile {
+            public String display_name;
+            public String avatar_url;
+        }
     }
 
     // --- Leonardo Models ---

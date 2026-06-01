@@ -64,8 +64,12 @@ public class LoginActivity extends AppCompatActivity {
 
     private void signIn() {
         showLoading(true);
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+        // Force Google Sign-In SDK to sign out of any cached sessions first.
+        // This ensures the official "Google Account Chooser" dialog is always presented.
+        mGoogleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        });
     }
 
     @Override
